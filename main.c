@@ -99,7 +99,6 @@ size_t tokenize(const char* file_content, char tokens[][TOKENS_CAP]) {
   // strtok in this function call
   // By not doing so the two states would conflict leading in errors
   char *save_ptr;
-  char *save_ptr_inner;
 
   // We need to make a copy of the wole file_content as strtok will modify it
   // by replacing the delimiters with \0
@@ -108,7 +107,6 @@ size_t tokenize(const char* file_content, char tokens[][TOKENS_CAP]) {
   strcpy(it, file_content);
 
   bool starts_with_string_literal = *file_content == '"';
-  char *string_literal;
 
   char *tmp_file_content = malloc(sizeof(char) * strlen(file_content));
   strcpy(tmp_file_content, file_content);
@@ -119,24 +117,20 @@ size_t tokenize(const char* file_content, char tokens[][TOKENS_CAP]) {
 
   while (it != NULL) {
     if (*it == '"') {
-      // This is needed as we need to parse the string literal as soon as we can
-      // before we call strtok with the space delimiter otherwise if the string
-      // literal cointained whitespace it would break it.
-      // So we do it before if the program starts with a string literal,
-      // therefore we don't have to do it later.
-      parse_string_literal(tmp_file_content, &string_literal, starts_with_string_literal, &save_ptr_inner);
-
-      size_t string_literal_size = strlen(string_literal);
+      char string_literal[TOKEN_MAX_LENGTH];
+      size_t i = 0;
+      char *j = it++;
+      do {
+        string_literal[i++] = *j;
+        ++j;
+      } while(*j != '"');
+      string_literal[i++] = '"';
       strcpy(tokens[tokens_size++], string_literal);
+      printf("Inserted: %s\nLen: %zu\n", string_literal, strlen(string_literal));
 
-      // Here we skip the quoted string and then save the current position of
-      // the iterator to the state of strtok so that the next delimiter is
-      // searched starting from after the last double quote
-      // We also call to strtok to effectively shit the pointer to this location
-      it += string_literal_size + 1;
+      it += strlen(string_literal);
       save_ptr = it;
       it = strtok_r(NULL, delimiter, &save_ptr);
-      starts_with_string_literal = false;
       continue;
     }
 
