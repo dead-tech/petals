@@ -25,6 +25,17 @@ void slice_str(const char *str, char *buffer, size_t start, size_t end)
   buffer[j] = 0;
 }
 
+bool is_number(const char* word)
+{
+  size_t word_len = strlen(word);
+  for (size_t i = 0; i < word_len; ++i) {
+    if (!isdigit(word[i])) {
+      return false;
+    }
+  }
+  return true;
+}
+
 void print_usage()
 {
   printf("./petals <file>\n");
@@ -55,13 +66,7 @@ size_t read_file(const char* file_path, char file_content[])
   return file_size;
 }
 
-void prepend(char* s, const char* t)
-{
-    size_t len = strlen(t);
-    memmove(s + len, s, strlen(s) + 1);
-    memcpy(s, t, len);
-}
-
+// @param it - Basically the pointer to the first double quote in the string literal
 void parse_string_literal(char *it, char string_literal[TOKEN_MAX_LENGTH])
 {
   size_t i = 0;
@@ -91,9 +96,9 @@ size_t tokenize(const char* file_content, char tokens[][TOKENS_CAP]) {
 
   bool starts_with_string_literal = *file_content == '"';
 
-  // char *tmp_file_content = malloc(sizeof(char) * strlen(file_content));
-  // strcpy(tmp_file_content, file_content);
-
+  // If we were to call strtok even if the file starts with a string literal
+  // it would not parse that string literal correctly as strtok skips the first
+  // delimiter.
   if (!starts_with_string_literal) {
     it = strtok_r(it, delimiter, &save_ptr);
   }
@@ -106,12 +111,13 @@ size_t tokenize(const char* file_content, char tokens[][TOKENS_CAP]) {
 
       strcpy(tokens[tokens_size++], string_literal);
 
-      printf("Inserted: %s\nLen: %zu\n", string_literal, string_literal_size);
-
+      // Here we skip the quoted string and then save the current position of
+      // the iterator to the state of strtok so that the next delimiter is
+      // searched starting from after the last double quote
+      // We also call to strtok to effectively shift the pointer to this location
       it += string_literal_size + 1;
       save_ptr = it;
       it = strtok_r(NULL, delimiter, &save_ptr);
-
       continue;
     }
 
@@ -123,20 +129,7 @@ size_t tokenize(const char* file_content, char tokens[][TOKENS_CAP]) {
     starts_with_string_literal = false;
   }
 
-  // free(tmp_file_content);
-
   return tokens_size;
-}
-
-bool is_number(const char* word)
-{
-  // TODO: extract strlen from condition as it increases time complexity from O(n) to O(n**2)
-  for (size_t i = 0; i < strlen(word); ++i) {
-    if (!isdigit(word[i])) {
-      return false;
-    }
-  }
-  return true;
 }
 
 void print_stack(int64_t stack[], size_t stack_size)
@@ -155,15 +148,6 @@ void print_tokens(char tokens[TOKEN_MAX_LENGTH + 1][TOKENS_CAP], const size_t st
     printf(" %s,", tokens[i]);
   }
   printf(" }\n");
-}
-
-bool starts_with(const char *a, const char *b)
-{
-   if(strncmp(a, b, strlen(b)) == 0) {
-    return 1;
-  }
-
-  return 0;
 }
 
 int main(int argc, char **argv)
@@ -203,7 +187,7 @@ int main(int argc, char **argv)
       int64_t index = stack[--stack_size];
       printf("%s\n", string_literals[index]);
       ++ip;
-    }else if (strcmp("print", word) == 0) {
+    } else if (strcmp("print", word) == 0) {
       int64_t top = stack[--stack_size];
       printf("%zu\n", top);
       ++ip;
@@ -215,7 +199,7 @@ int main(int argc, char **argv)
       ++ip;
     } else if (strcmp("drop", word) == 0) {
       __attribute__((unused)) int64_t a = stack[--stack_size];
-    } else if (starts_with(word, "\"")) {
+    } else if (strncmp(word, "\"", 1) == 0) {
       size_t word_size = strlen(word);
 
       char quoted_word[word_size - 2];
