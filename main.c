@@ -62,32 +62,16 @@ void prepend(char* s, const char* t)
     memcpy(s, t, len);
 }
 
-// The boolean here is quite bad, but it gets the jod bone
-// We use this in order to decide whether to perform strtok twice.
-// If the file_content starts immediately with a string literal we must not
-// call strtok twice as it will skip the first quote and break the string just
-// on the second one. Consequently the string_literal will be matched after the
-// first call. Calling another time the function will result in a bad outcome.
-void parse_string_literal(char *tmp_file_content, char **string_literal, const bool starts_with_string_literal, char **save_ptr)
+void parse_string_literal(char *it, char string_literal[TOKEN_MAX_LENGTH])
 {
-  if (*save_ptr != NULL) {
-    tmp_file_content = *save_ptr;
+  size_t i = 0;
+  string_literal[i++] = *it;
+
+  for (char *ch = ++it; *ch != '"'; ++ch) {
+    string_literal[i++] = *ch;
   }
 
-  *string_literal = strtok_r(tmp_file_content, "\"", save_ptr);
-
-  if (!starts_with_string_literal) {
-    *string_literal = strtok_r(NULL, "\"", save_ptr);
-  }
-
-  // if (strtok_r(NULL, "\"", save_ptr) == NULL) {
-  //   fprintf(stderr, "petals error: missing closing double quote\n");
-  //   exit(1);
-  // }
-
-  // We add quotes around the string to make interpreting easier
-  prepend(*string_literal, "\"");
-  strcat(*string_literal, "\"");
+  string_literal[i++] = '"';
 }
 
 size_t tokenize(const char* file_content, char tokens[][TOKENS_CAP]) {
@@ -95,9 +79,8 @@ size_t tokenize(const char* file_content, char tokens[][TOKENS_CAP]) {
   const char* delimiter = " \n";
 
   // This is needed to save the state of strtok
-  // We need to manually create a storage for the state as we are using two
-  // strtok in this function call
-  // By not doing so the two states would conflict leading in errors
+  // This way we are able to manually shift the next position, therefore where
+  // to start searching the next delimiter
   char *save_ptr;
 
   // We need to make a copy of the wole file_content as strtok will modify it
@@ -108,8 +91,8 @@ size_t tokenize(const char* file_content, char tokens[][TOKENS_CAP]) {
 
   bool starts_with_string_literal = *file_content == '"';
 
-  char *tmp_file_content = malloc(sizeof(char) * strlen(file_content));
-  strcpy(tmp_file_content, file_content);
+  // char *tmp_file_content = malloc(sizeof(char) * strlen(file_content));
+  // strcpy(tmp_file_content, file_content);
 
   if (!starts_with_string_literal) {
     it = strtok_r(it, delimiter, &save_ptr);
@@ -118,19 +101,17 @@ size_t tokenize(const char* file_content, char tokens[][TOKENS_CAP]) {
   while (it != NULL) {
     if (*it == '"') {
       char string_literal[TOKEN_MAX_LENGTH];
-      size_t i = 0;
-      char *j = it++;
-      do {
-        string_literal[i++] = *j;
-        ++j;
-      } while(*j != '"');
-      string_literal[i++] = '"';
-      strcpy(tokens[tokens_size++], string_literal);
-      printf("Inserted: %s\nLen: %zu\n", string_literal, strlen(string_literal));
+      parse_string_literal(it, string_literal);
+      const size_t string_literal_size = strlen(string_literal);
 
-      it += strlen(string_literal);
+      strcpy(tokens[tokens_size++], string_literal);
+
+      printf("Inserted: %s\nLen: %zu\n", string_literal, string_literal_size);
+
+      it += string_literal_size + 1;
       save_ptr = it;
       it = strtok_r(NULL, delimiter, &save_ptr);
+
       continue;
     }
 
@@ -142,7 +123,7 @@ size_t tokenize(const char* file_content, char tokens[][TOKENS_CAP]) {
     starts_with_string_literal = false;
   }
 
-  free(tmp_file_content);
+  // free(tmp_file_content);
 
   return tokens_size;
 }
