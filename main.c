@@ -73,6 +73,10 @@ void parse_string_literal(char *it, char string_literal[TOKEN_MAX_LENGTH])
   string_literal[i++] = *it;
 
   for (char *ch = ++it; *ch != '"'; ++ch) {
+    if (i > (TOKEN_MAX_LENGTH - 2)) {
+      fprintf(stderr, "petals error: could not find closing double quote\n");
+      exit(1);
+    }
     string_literal[i++] = *ch;
   }
 
@@ -105,7 +109,7 @@ size_t tokenize(const char* file_content, char tokens[][TOKENS_CAP]) {
 
   while (it != NULL) {
     if (*it == '"') {
-      char string_literal[TOKEN_MAX_LENGTH];
+      char string_literal[TOKEN_MAX_LENGTH] = {0};
       parse_string_literal(it, string_literal);
       const size_t string_literal_size = strlen(string_literal);
 
@@ -123,10 +127,6 @@ size_t tokenize(const char* file_content, char tokens[][TOKENS_CAP]) {
 
     strcpy(tokens[tokens_size++], it);
     it = strtok_r(NULL, delimiter, &save_ptr);
-
-    // Make sure to set this to false, otherwise we won't parse any other string
-    // literal other than the first one;
-    starts_with_string_literal = false;
   }
 
   return tokens_size;
@@ -141,10 +141,10 @@ void print_stack(int64_t stack[], size_t stack_size)
   printf(" ]\n");
 }
 
-void print_tokens(char tokens[TOKEN_MAX_LENGTH + 1][TOKENS_CAP], const size_t stack_size)
+void print_tokens(char tokens[TOKEN_MAX_LENGTH + 1][TOKENS_CAP], const size_t tokens_size)
 {
   printf("{");
-  for (size_t i = 0; i < stack_size; ++i) {
+  for (size_t i = 0; i < tokens_size; ++i) {
     printf(" %s,", tokens[i]);
   }
   printf(" }\n");
@@ -186,6 +186,7 @@ int main(int argc, char **argv)
     } else if (strcmp("puts", word) == 0) {
       int64_t index = stack[--stack_size];
       printf("%s\n", string_literals[index]);
+      --string_literals_size;
       ++ip;
     } else if (strcmp("print", word) == 0) {
       int64_t top = stack[--stack_size];
@@ -199,6 +200,7 @@ int main(int argc, char **argv)
       ++ip;
     } else if (strcmp("drop", word) == 0) {
       __attribute__((unused)) int64_t a = stack[--stack_size];
+      ++ip;
     } else if (strncmp(word, "\"", 1) == 0) {
       size_t word_size = strlen(word);
 
