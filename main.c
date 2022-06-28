@@ -6,6 +6,8 @@
 #include <ctype.h>
 #include <assert.h>
 
+#define ENABLE_TRACING false 
+
 #define FILE_CONTENT_CAP 1024 * 1024
 
 #define TOKEN_MAX_LENGTH 64
@@ -41,6 +43,24 @@ void print_usage()
   printf("./petals <file>\n");
 }
 
+void print_stack(int64_t stack[], size_t stack_size)
+{
+  printf("[");
+  for (size_t i = 0; i < stack_size; ++i) {
+    printf(" %zu,", stack[i]);
+  }
+  printf(" ]\n");
+}
+
+void print_tokens(char tokens[TOKEN_MAX_LENGTH + 1][TOKENS_CAP], const size_t tokens_size)
+{
+  printf("{");
+  for (size_t i = 0; i < tokens_size; ++i) {
+    printf(" %s,", tokens[i]);
+  }
+  printf(" }\n");
+}
+
 size_t read_file(const char* file_path, char file_content[])
 {
   FILE* handle = fopen(file_path, "rb");
@@ -66,6 +86,24 @@ size_t read_file(const char* file_path, char file_content[])
   return file_size;
 }
 
+void parse_word(char *it, char word[TOKEN_MAX_LENGTH])
+{
+  size_t i = 0;
+  for (char *ch = it; *ch != ' '; ++ch) {
+    const size_t size = strlen(ch);
+    if (size < 1) {
+      break;
+    }
+
+    if (i > (TOKEN_MAX_LENGTH - 2)) {
+      fprintf(stderr, "petals error: token exceeded max token length = %d\n", TOKEN_MAX_LENGTH);
+      exit(1);
+    }
+
+    word[i++] = *ch;
+  }
+}
+
 // @param it - Basically the pointer to the first double quote in the string literal
 void parse_string_literal(char *it, char string_literal[TOKEN_MAX_LENGTH])
 {
@@ -83,31 +121,10 @@ void parse_string_literal(char *it, char string_literal[TOKEN_MAX_LENGTH])
   string_literal[i++] = '"';
 }
 
-size_t tokenize(const char* file_content, char tokens[][TOKENS_CAP]) {
+size_t tokenize(char* file_content, char tokens[][TOKENS_CAP]) {
   size_t tokens_size = 0;
-  const char* delimiter = " \n";
 
-  // This is needed to save the state of strtok
-  // This way we are able to manually shift the next position, therefore where
-  // to start searching the next delimiter
-  char *save_ptr;
-
-  // We need to make a copy of the wole file_content as strtok will modify it
-  // by replacing the delimiters with \0
-  char file_content_copy[FILE_CONTENT_CAP] = {0};
-  char *it = &file_content_copy[0];
-  strcpy(it, file_content);
-
-  bool starts_with_string_literal = *file_content == '"';
-
-  // If we were to call strtok even if the file starts with a string literal
-  // it would not parse that string literal correctly as strtok skips the first
-  // delimiter.
-  if (!starts_with_string_literal) {
-    it = strtok_r(it, delimiter, &save_ptr);
-  }
-
-  while (it != NULL) {
+  for (char *it = file_content; *it != '\0';) {
     if (*it == '"') {
       char string_literal[TOKEN_MAX_LENGTH] = {0};
       parse_string_literal(it, string_literal);
@@ -115,39 +132,19 @@ size_t tokenize(const char* file_content, char tokens[][TOKENS_CAP]) {
 
       strcpy(tokens[tokens_size++], string_literal);
 
-      // Here we skip the quoted string and then save the current position of
-      // the iterator to the state of strtok so that the next delimiter is
-      // searched starting from after the last double quote
-      // We also call to strtok to effectively shift the pointer to this location
+      // Here we skip the quoted string 
       it += string_literal_size + 1;
-      save_ptr = it;
-      it = strtok_r(NULL, delimiter, &save_ptr);
       continue;
     }
 
-    strcpy(tokens[tokens_size++], it);
-    it = strtok_r(NULL, delimiter, &save_ptr);
+    char word[TOKEN_MAX_LENGTH] = {0};
+    parse_word(it, word);
+
+    strcpy(tokens[tokens_size++], word);
+    it += strlen(word) + 1;
   }
 
   return tokens_size;
-}
-
-void print_stack(int64_t stack[], size_t stack_size)
-{
-  printf("[");
-  for (size_t i = 0; i < stack_size; ++i) {
-    printf(" %zu,", stack[i]);
-  }
-  printf(" ]\n");
-}
-
-void print_tokens(char tokens[TOKEN_MAX_LENGTH + 1][TOKENS_CAP], const size_t tokens_size)
-{
-  printf("{");
-  for (size_t i = 0; i < tokens_size; ++i) {
-    printf(" %s,", tokens[i]);
-  }
-  printf(" }\n");
 }
 
 int main(int argc, char **argv)
@@ -174,6 +171,11 @@ int main(int argc, char **argv)
 
   for (size_t i = 0; i < tokens_size; ++i) {
     char* word = tokens[ip];
+
+#if ENABLE_TRACING
+    print_tokens(tokens, tokens_size);
+    print_stack(stack, stack_size);
+#endif
 
     if (is_number(word)) {
       stack[stack_size++] = atoi(word);
