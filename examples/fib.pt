@@ -1,0 +1,1 @@
+0 println 0 1 while 2swap dup 30 < do 2swap over println swap over + pairswap end drop drop drop
