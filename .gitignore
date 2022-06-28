@@ -1,4 +1,4 @@
 .vscode/
 petals
 *.o
-*.pt
+main.pt
