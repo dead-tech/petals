@@ -6,7 +6,7 @@
 #include <ctype.h>
 #include <assert.h>
 
-#define ENABLE_TRACING false 
+#define ENABLE_TRACING false
 
 #define FILE_CONTENT_CAP 1024 * 1024
 
@@ -187,10 +187,19 @@ int main(int argc, char **argv)
       ++ip;
     } else if (strcmp("puts", word) == 0) {
       int64_t index = stack[--stack_size];
+      printf("%s", string_literals[index]);
+      --string_literals_size;
+      ++ip;
+    } else if (strcmp("putsln", word) == 0) {
+      int64_t index = stack[--stack_size];
       printf("%s\n", string_literals[index]);
       --string_literals_size;
       ++ip;
     } else if (strcmp("print", word) == 0) {
+      int64_t top = stack[--stack_size];
+      printf("%zu", top);
+      ++ip;
+    } else if (strcmp("println", word) == 0) {
       int64_t top = stack[--stack_size];
       printf("%zu\n", top);
       ++ip;
@@ -217,6 +226,10 @@ int main(int argc, char **argv)
     }
   }
 
+  if (stack_size > 0) {
+    fprintf(stderr, "petals error: unhandled data on the stack\n");
+    exit(1);
+  }
 
   return 0;
 }
