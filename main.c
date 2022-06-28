@@ -18,6 +18,21 @@
 #define STRING_LITERALS_CAP 1024 * 1024
 #define STRING_LITERAL_MAX_LENGTH 1024
 
+typedef struct {
+  char file_content[FILE_CONTENT_CAP];
+
+  char tokens[TOKEN_MAX_LENGTH + 1][TOKENS_CAP];
+  size_t tokens_size;
+
+  int64_t stack[STACK_CAP];
+  size_t stack_size;
+
+  char string_literals[STRING_LITERAL_MAX_LENGTH + 1][STRING_LITERALS_CAP];
+  size_t string_literals_size;
+
+  size_t ip;
+} InterpreterState;
+
 void slice_str(const char *str, char *buffer, size_t start, size_t end)
 {
   size_t j = 0;
@@ -155,22 +170,13 @@ int main(int argc, char **argv)
     exit(1);
   }
 
-  static char file_content[FILE_CONTENT_CAP] = {0};
-  read_file(argv[1], file_content);
+  static InterpreterState state = {0};
 
-  static char tokens[TOKEN_MAX_LENGTH + 1][TOKENS_CAP] = {0};
-  size_t tokens_size = tokenize(file_content, tokens);
+  read_file(argv[1], state.file_content);
+  state.tokens_size = tokenize(state.file_content, state.tokens);
 
-  static int64_t stack[STACK_CAP] = {0};
-  size_t stack_size = 0;
-
-  static char string_literals[STRING_LITERAL_MAX_LENGTH + 1][STRING_LITERALS_CAP] = {0};
-  size_t string_literals_size = 0;
-
-  size_t ip = 0;
-
-  for (size_t i = 0; i < tokens_size; ++i) {
-    char* word = tokens[ip];
+  for (size_t i = 0; i < state.tokens_size; ++i) {
+    char* word = state.tokens[state.ip];
 
 #if ENABLE_TRACING
     print_tokens(tokens, tokens_size);
@@ -178,55 +184,55 @@ int main(int argc, char **argv)
 #endif
 
     if (is_number(word)) {
-      stack[stack_size++] = atoi(word);
-      ++ip;
+      state.stack[state.stack_size++] = atoi(word);
+      ++state.ip;
     } else if (strcmp("+", word) == 0) {
-      int64_t a = stack[--stack_size];
-      int64_t b = stack[--stack_size];
-      stack[stack_size++] = a + b;
-      ++ip;
+      int64_t a = state.stack[--state.stack_size];
+      int64_t b = state.stack[--state.stack_size];
+      state.stack[state.stack_size++] = a + b;
+      ++state.ip;
     } else if (strcmp("puts", word) == 0) {
-      int64_t index = stack[--stack_size];
-      printf("%s", string_literals[index]);
-      --string_literals_size;
-      ++ip;
+      int64_t index = state.stack[--state.stack_size];
+      printf("%s", state.string_literals[index]);
+      --state.string_literals_size;
+      ++state.ip;
     } else if (strcmp("putsln", word) == 0) {
-      int64_t index = stack[--stack_size];
-      printf("%s\n", string_literals[index]);
-      --string_literals_size;
-      ++ip;
+      int64_t index = state.stack[--state.stack_size];
+      printf("%s\n", state.string_literals[index]);
+      --state.string_literals_size;
+      ++state.ip;
     } else if (strcmp("print", word) == 0) {
-      int64_t top = stack[--stack_size];
+      int64_t top = state.stack[--state.stack_size];
       printf("%zu", top);
-      ++ip;
+      ++state.ip;
     } else if (strcmp("println", word) == 0) {
-      int64_t top = stack[--stack_size];
+      int64_t top = state.stack[--state.stack_size];
       printf("%zu\n", top);
-      ++ip;
+      ++state.ip;
     } else if (strcmp("swap", word) == 0) {
-      int64_t a = stack[--stack_size];
-      int64_t b = stack[--stack_size];
-      stack[stack_size++] = a;
-      stack[stack_size++] = b;
-      ++ip;
+      int64_t a = state.stack[--state.stack_size];
+      int64_t b = state.stack[--state.stack_size];
+      state.stack[state.stack_size++] = a;
+      state.stack[state.stack_size++] = b;
+      ++state.ip;
     } else if (strcmp("drop", word) == 0) {
-      __attribute__((unused)) int64_t a = stack[--stack_size];
-      ++ip;
+      __attribute__((unused)) int64_t a = state.stack[--state.stack_size];
+      ++state.ip;
     } else if (strncmp(word, "\"", 1) == 0) {
       size_t word_size = strlen(word);
 
       char quoted_word[word_size - 2];
       slice_str(word, quoted_word, 1, word_size - 2);
 
-      strcpy(string_literals[string_literals_size++], quoted_word);
+      strcpy(state.string_literals[state.string_literals_size++], quoted_word);
 
-      stack[stack_size++] = word_size - 2;
-      stack[stack_size++] = string_literals_size - 1;
-      ++ip;
+      state.stack[state.stack_size++] = word_size - 2;
+      state.stack[state.stack_size++] = state.string_literals_size - 1;
+      ++state.ip;
     }
   }
 
-  if (stack_size > 0) {
+  if (state.stack_size > 0) {
     fprintf(stderr, "petals error: unhandled data on the stack\n");
     exit(1);
   }
