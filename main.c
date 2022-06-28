@@ -31,7 +31,7 @@ int main(int argc, char **argv)
   interpret(&state);
 
   if (state.stack_size > 0) {
-    fprintf(stderr, "petals error: unhandled data on the stack\n");
+    fprintf(stderr, "petals error: unhandled data on the stack: %zu\n", state.stack_size);
     exit(1);
   }
 
