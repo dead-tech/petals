@@ -20,12 +20,11 @@ void state_print_tokens(char tokens[TOKEN_MAX_LENGTH + 1][TOKENS_CAP], const siz
 
 void interpret(InterpreterState *state)
 {
-  for (size_t i = 0; i < state->tokens_size; ++i) {
+  while (state->ip < state->tokens_size) {
     char* word = state->tokens[state->ip];
 
     if (getenv("TRACE")) {
-      state_print_tokens(state->tokens, state->tokens_size);
-      state_print_stack(state->stack, state->stack_size);
+      printf("\nCurrent word: %s\t IP: %zu\n", word, state->ip);
     }
 
     if (is_number(word)) {
@@ -35,6 +34,11 @@ void interpret(InterpreterState *state)
       int64_t a = state->stack[--state->stack_size];
       int64_t b = state->stack[--state->stack_size];
       state->stack[state->stack_size++] = a + b;
+      ++state->ip;
+    } else if (strcmp("<", word) == 0) {
+      int64_t a = state->stack[--state->stack_size];
+      int64_t b = state->stack[--state->stack_size];
+      state->stack[state->stack_size++] = b < a;
       ++state->ip;
     } else if (strcmp("puts", word) == 0) {
       int64_t index = state->stack[--state->stack_size];
@@ -55,10 +59,41 @@ void interpret(InterpreterState *state)
       printf("%zu\n", top);
       ++state->ip;
     } else if (strcmp("swap", word) == 0) {
+      assert(state->stack_size >= 2 && "petals error: not enough arguments for swap");
       int64_t a = state->stack[--state->stack_size];
       int64_t b = state->stack[--state->stack_size];
       state->stack[state->stack_size++] = a;
       state->stack[state->stack_size++] = b;
+      ++state->ip;
+    } else if (strcmp("pairswap", word) == 0) {
+      int64_t a = state->stack[--state->stack_size];
+      int64_t b = state->stack[--state->stack_size];
+      int64_t c = state->stack[--state->stack_size];
+      int64_t d = state->stack[--state->stack_size];
+      state->stack[state->stack_size++] = b;
+      state->stack[state->stack_size++] = a;
+      state->stack[state->stack_size++] = d;
+      state->stack[state->stack_size++] = c;
+      ++state->ip;
+    } else if (strcmp("over", word) == 0) {
+      int64_t a = state->stack[--state->stack_size];
+      int64_t b = state->stack[--state->stack_size];
+      state->stack[state->stack_size++] = a;
+      state->stack[state->stack_size++] = b;
+      state->stack[state->stack_size++] = a;
+      ++state->ip;
+    } else if (strcmp("dup", word) == 0) {
+      int64_t a = state->stack[--state->stack_size];
+      state->stack[state->stack_size++] = a;
+      state->stack[state->stack_size++] = a;
+      ++state->ip;
+    } else if (strcmp("2swap", word) == 0) {
+      int64_t a = state->stack[--state->stack_size];
+      int64_t b = state->stack[--state->stack_size];
+      int64_t c = state->stack[--state->stack_size];
+      state->stack[state->stack_size++] = a;
+      state->stack[state->stack_size++] = b;
+      state->stack[state->stack_size++] = c;
       ++state->ip;
     } else if (strcmp("drop", word) == 0) {
       __attribute__((unused)) int64_t a = state->stack[--state->stack_size];
@@ -74,6 +109,35 @@ void interpret(InterpreterState *state)
       state->stack[state->stack_size++] = word_size - 2;
       state->stack[state->stack_size++] = state->string_literals_size - 1;
       ++state->ip;
+    } else if (strcmp("while", word) == 0) {
+      state->stack[state->stack_size++] = state->ip;
+      ++state->ip;
+    } else if (strcmp("do", word) == 0) {
+      int64_t condition = state->stack[--state->stack_size];
+      if (condition == true) {
+        ++state->ip;
+      } else if (condition == false) {
+        // TODO: Handle
+        while (strcmp("end", state->tokens[state->ip]) != 0) {
+          ++state->ip;
+        }
+      }
+      state->stack[state->stack_size++] = condition;
+    } else if (strcmp("end", word) == 0) {
+      int64_t condition = state->stack[--state->stack_size];
+      if (!condition) {
+        ++state->ip;
+      } else {
+        int64_t while_addr = state->stack[--state->stack_size];
+        state->ip = while_addr;
+      }
     }
+
+    if (getenv("TRACE")) {
+      // state_print_tokens(state->tokens, state->tokens_size);
+      printf("\n");
+      state_print_stack(state->stack, state->stack_size);
+    }
+
   }
 }

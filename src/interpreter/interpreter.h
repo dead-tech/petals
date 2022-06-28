@@ -2,6 +2,7 @@
 #define INTERPRETER_H
 
 #include <stdlib.h>
+#include <assert.h>
 
 #include "../tokenizer/tokenizer.h"
 #include "../utils/utils.h"
