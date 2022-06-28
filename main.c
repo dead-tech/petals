@@ -6,8 +6,6 @@
 #include <ctype.h>
 #include <assert.h>
 
-#define ENABLE_TRACING false
-
 #define FILE_CONTENT_CAP 1024 * 1024
 
 #define TOKEN_MAX_LENGTH 64
@@ -167,10 +165,10 @@ void interpret(InterpreterState *state)
   for (size_t i = 0; i < state->tokens_size; ++i) {
     char* word = state->tokens[state->ip];
 
-#if ENABLE_TRACING
-    print_tokens(tokens, tokens_size);
-    print_stack(stack, stack_size);
-#endif
+    if (getenv("TRACE")) {
+      print_tokens(state->tokens, state->tokens_size);
+      print_stack(state->stack, state->stack_size);
+    }
 
     if (is_number(word)) {
       state->stack[state->stack_size++] = atoi(word);
