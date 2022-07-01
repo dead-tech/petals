@@ -14,6 +14,10 @@ void parse_word(char *it, char word[TOKEN_MAX_LENGTH])
       exit(1);
     }
 
+    if (*ch == '\n') {
+      break;
+    }
+
     word[i++] = *ch;
   }
 }
@@ -52,11 +56,22 @@ size_t tokenize(char* file_content, char tokens[][TOKENS_CAP])
       continue;
     }
 
+    if (*it == '\n') {
+      ++it;
+      continue;
+    }
+
     char word[TOKEN_MAX_LENGTH] = {0};
     parse_word(it, word);
 
     strcpy(tokens[tokens_size++], word);
     it += strlen(word) + 1;
+
+
+    // Skip whitespaces
+    while(*it == ' ') {
+      ++it;
+    }
   }
 
   return tokens_size;
