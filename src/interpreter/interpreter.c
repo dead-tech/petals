@@ -54,6 +54,26 @@ void interpret(InterpreterState *state)
       int64_t b = state->stack[--state->stack_size];
       state->stack[state->stack_size++] = b < a;
       ++state->ip;
+    } else if (strcmp("shl", word) == 0) {
+      int64_t a = state->stack[--state->stack_size];
+      int64_t b = state->stack[--state->stack_size];
+      state->stack[state->stack_size++] = b << a;
+      ++state->ip;
+    } else if (strcmp("shr", word) == 0) {
+      int64_t a = state->stack[--state->stack_size];
+      int64_t b = state->stack[--state->stack_size];
+      state->stack[state->stack_size++] = b >> a;
+      ++state->ip;
+    } else if (strcmp("and", word) == 0) {
+      int64_t a = state->stack[--state->stack_size];
+      int64_t b = state->stack[--state->stack_size];
+      state->stack[state->stack_size++] = b & a;
+      ++state->ip;
+    } else if (strcmp("or", word) == 0) {
+      int64_t a = state->stack[--state->stack_size];
+      int64_t b = state->stack[--state->stack_size];
+      state->stack[state->stack_size++] = b | a;
+      ++state->ip;
     } else if (strcmp("puts", word) == 0) {
       int64_t index = state->stack[--state->stack_size];
       printf("%s", state->string_literals[index]);
