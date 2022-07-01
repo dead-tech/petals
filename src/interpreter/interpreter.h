@@ -14,6 +14,13 @@
 #define STRING_LITERALS_CAP 1024 * 1024
 #define STRING_LITERAL_MAX_LENGTH 1024
 
+typedef enum {
+  WHILE_STATEMENT = 0,
+  IF_STATEMENT,
+  NONE,
+  COUNT_LOOP_TYPES
+} StatementType;
+
 typedef struct {
   char file_content[FILE_CONTENT_CAP];
 
@@ -27,6 +34,12 @@ typedef struct {
   size_t string_literals_size;
 
   size_t ip;
+
+  // This is used to change the behaviour of `end` keyword as, in a while loop
+  // `end` is used to check another time the condition and decide on that
+  // whether to go back to the while loop, whereas in the if statement it's just
+  // a delimiter of where the true branch of the if statement ends
+  StatementType current_statement_type;
 } InterpreterState;
 
 

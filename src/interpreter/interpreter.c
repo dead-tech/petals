@@ -20,6 +20,10 @@ void state_print_tokens(char tokens[TOKEN_MAX_LENGTH + 1][TOKENS_CAP], const siz
 
 void interpret(InterpreterState *state)
 {
+  if (getenv("TRACE")) {
+    state_print_tokens(state->tokens, state->tokens_size);
+  }
+
   while (state->ip < state->tokens_size) {
     char* word = state->tokens[state->ip];
 
@@ -34,6 +38,16 @@ void interpret(InterpreterState *state)
       int64_t a = state->stack[--state->stack_size];
       int64_t b = state->stack[--state->stack_size];
       state->stack[state->stack_size++] = a + b;
+      ++state->ip;
+    } else if (strcmp("-", word) == 0) {
+      int64_t a = state->stack[--state->stack_size];
+      int64_t b = state->stack[--state->stack_size];
+      state->stack[state->stack_size++] = b - a;
+      ++state->ip;
+    } else if (strcmp("=", word) == 0) {
+      int64_t a = state->stack[--state->stack_size];
+      int64_t b = state->stack[--state->stack_size];
+      state->stack[state->stack_size++] = b == a;
       ++state->ip;
     } else if (strcmp("<", word) == 0) {
       int64_t a = state->stack[--state->stack_size];
@@ -111,9 +125,21 @@ void interpret(InterpreterState *state)
       ++state->ip;
     } else if (strcmp("while", word) == 0) {
       state->stack[state->stack_size++] = state->ip;
+      state->current_statement_type = WHILE_STATEMENT;
       ++state->ip;
+    } else if (strcmp("if", word) == 0) {
+      int64_t condition = state->stack[--state->stack_size];
+      if (condition == true) {
+        ++state->ip;
+      } else {
+        while (strcmp("end", state->tokens[state->ip]) != 0) {
+          ++state->ip;
+        }
+      }
+      state->current_statement_type = IF_STATEMENT;
     } else if (strcmp("do", word) == 0) {
       int64_t condition = state->stack[--state->stack_size];
+      // TODO: Clean this if statement
       if (condition == true) {
         ++state->ip;
       } else if (condition == false) {
@@ -124,6 +150,12 @@ void interpret(InterpreterState *state)
       }
       state->stack[state->stack_size++] = condition;
     } else if (strcmp("end", word) == 0) {
+      if (state->current_statement_type == IF_STATEMENT) {
+        state->current_statement_type = NONE;
+        ++state->ip;
+        continue;
+      }
+
       int64_t condition = state->stack[--state->stack_size];
       if (!condition) {
         ++state->ip;
@@ -131,6 +163,8 @@ void interpret(InterpreterState *state)
         int64_t while_addr = state->stack[--state->stack_size];
         state->ip = while_addr;
       }
+
+      state->current_statement_type = NONE;
     }
 
     if (getenv("TRACE")) {
